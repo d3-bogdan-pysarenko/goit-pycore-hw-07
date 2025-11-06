@@ -1,5 +1,138 @@
 import functools
+from collections import UserDict
+from datetime import datetime, timedelta, date
 
+class Field:
+    def __init__(self,value):
+        self.__value = value.strip()
+
+    @property
+    def value(self):
+        return self.__value
+
+    @value.setter
+    def value(self, value):
+        self.__value = value
+
+    def __str__(self):
+        return str(self.value)
+
+class Name(Field):
+    pass
+
+class Birthday(Field):
+    def __init__(self, value):
+        try:
+            formatted_string = '%d.%m.%Y'
+            self.value = datetime.strptime(value,formatted_string).date()
+        except ValueError:
+            raise ValueError("Invalid date format. Use DD.MM.YYYY format for real calendar dates")
+
+class Phone(Field):
+   def __init__(self,value):
+
+        if isinstance(value, str) and value.isdigit() and len(value) == 10:
+            self.value = value
+        else:
+            raise ValueError("Phone number must be a 10-digit string")
+
+
+class Record:
+    def __init__(self, name):
+        self.name = Name(name)
+        self.phones = []
+        self.birthday = None
+
+    def add_birthday(self, birhday_string):
+        self.birthday = Birthday(birhday_string)
+
+    def show_birthday(self):
+        return self.birthday
+
+    def add_phone(self,phone_number):
+        phone_num_act = Phone(phone_number)
+        self.phones.append(phone_num_act)
+    
+    def find_phone(self, phone):
+        for phone_obj in self.phones:
+            if phone_obj.value == phone:
+                return phone_obj
+
+    def edit_phone(self, old_phone, new_phone):
+
+        phone_obj_to_edit = self.find_phone(old_phone)
+        if phone_obj_to_edit:
+            phone_obj_to_edit.value = new_phone
+        else:
+            raise ValueError(f"Phone number '{old_phone}' not found for editing within '{self.name}' record")
+    
+    def remove_phone(self, phone_num):
+        phone_obj_to_remove = self.find_phone(phone_num)
+        if phone_obj_to_remove:
+            self.phones.remove(phone_obj_to_remove)
+        else:
+            raise ValueError(f"Phone number '{phone_num}' not found in record for {self.name}.")
+
+
+    def __str__(self):
+        return f"Contact name: {self.name.value}, phones: {'; '.join(p.value for p in self.phones)}, bithday: {self.birthday}"
+    
+
+class AddressBook(UserDict):
+        def add_record(self, record):
+            if isinstance(record, Record):
+                self.data[record.name.value] = record
+            else:
+                raise TypeError("Only Record objects can be added to AddressBook.")
+            
+        def find(self,name):
+            return self.data.get(name)
+        
+        def delete(self, name):
+            if name in self.data:
+                del self.data[name]
+            else:
+                raise KeyError(f"Contact '{name}' not found in the address book.")
+        
+        def get_upcoming_birthdays(self):
+            today = date.today()
+            upcoming_birthdays = []
+            try:
+                for name, record in self.data.items():
+                    if record.birthday is not None: # if not populated
+                        # Replace year with the current year
+                        birthday_this_year = record.birthday.value.replace(year=today.year)
+
+                        # If birthday already passed this year, use next year
+                        if birthday_this_year < today:
+                            birthday_this_year = birthday_this_year.replace(year=today.year + 1)
+
+                        # If birthday is on weekend, move to next Monday
+                        if birthday_this_year.weekday() == 5:  # Saturday
+                            birthday_this_year += timedelta(days=2)
+                        elif birthday_this_year.weekday() == 6:  # Sunday
+                            birthday_this_year += timedelta(days=1)
+                        
+                        # Check if the (possibly shifted) date is within the next 7 days
+                        if 0 <= (birthday_this_year - today).days <= 7:
+                            upcoming_birthdays.append({
+                                "name": name,
+                                "original_birthday": record.birthday.value.strftime("%d.%m.%Y"),
+                                "congratulation_date": birthday_this_year.strftime("%d.%m.%Y")
+                            })
+                    
+                if len(upcoming_birthdays) == 0:
+                    print('There is no one to congratulate in next 7 days')
+                else:
+                    sorted_upcoming_birthdays = sorted(upcoming_birthdays, key=lambda x: x['congratulation_date'])
+                    print("Congratulations list for this week:\n",sorted_upcoming_birthdays)
+                    return upcoming_birthdays   
+            except ValueError:
+                raise ValueError(f"Wrong incoming data, please check your adressbook")
+
+#--------------------------------------------------- BOT --------------------------------------------------------------------------
+#--------------------------------------------------- BOT --------------------------------------------------------------------------
+#--------------------------------------------------- BOT --------------------------------------------------------------------------
 def input_error(func):
     """
     Decorator for caching user's input errors like KeyError, ValueError, IndexError
@@ -10,7 +143,7 @@ def input_error(func):
             return func(*args, **kwargs)
         except ValueError:
             # Case when there is less than 2 args for 'add' or 'change'
-            return "Give me name and phone please."
+            return "Give me name and phone with 10 digits, please."
         except KeyError:
             # Case when there is no given name available for 'phone' or 'change'
             return "Contact not found."
@@ -22,50 +155,69 @@ def input_error(func):
 # ----------------------------- Decorator ends ----------------------------------------------------------------------
 
 @input_error
-def add_contact(args, contacts):
+def add_contact(args, book:AddressBook):
     """
     Add new contact to the dictionary
     2 and only 2 args expected: Name and phone number, separated by space
     All names are stored from capital
     """
-    name, phone = args
-    contacts[name.capitalize()] = phone
-    return "Contact added."
+    name, phone, *_ = args
+    record = book.find(name.capitalize())
+    message = "Contact updated"
+    if record is None:
+        record = Record(name.capitalize())
+        book.add_record(record)
+        message = "Contact added"
+    if phone:
+        record.add_phone(phone)
+    return message
 
 @input_error
-def change_contact(args, contacts):
+def change_contact(args, book:AddressBook):
     """
     Updates number for already existing contact.
     requires name and phone number.
     """
-    name, phone = args
-    name_cap = name.capitalize()
+    name, old_phone, new_phone, *_ = args
+    record:Record = book.find(name.capitalize())
     
-    if name_cap in contacts:
-        contacts[name_cap] = phone
-        return "Contact updated."
+    if record is not None:
+        if new_phone.isdigit() and len(new_phone) == 10:
+            record.edit_phone(old_phone, new_phone)
+            return "Contact updated"
+        else:
+            return "New number must has 10 digits"
     else:
-        raise KeyError 
+        return "There is no such Contact in your book" 
 
 @input_error
-def show_phone(args, contacts):
+def show_phone(args, book:AddressBook):
     """
     Shows phone number if requested contact exists.
     requires name, that matches with available in contacts.
     """
     name = args[0]
-    name_cap = name.capitalize()
-    return contacts[name_cap] 
+    record:Record = book.find(name.capitalize())
+    if record is not None:
+        if len(record.phones) > 0:
+            phones = []
+            for phone_recording in record.phones:
+                phones.append(phone_recording.value)
+            return phones
+        else:
+            return f"{name.capitalize()} doesn't have any phones yet"
+    else:
+        return "There is no such Contact in your book"
 
-def show_all(contacts):
+def show_all(book:AddressBook):
     """
     Shows all contacts and their numbers saved during session
     """
-    if not contacts:
-        return "No contacts found."
+    if not book:
+        return "No contacts found"
     
     output_lines = []
-    for name, phone in contacts.items():
+    for name, phone in book.data.items():
         output_lines.append(f"{name}: {phone}")
     
     return "\n".join(output_lines)
@@ -88,7 +240,6 @@ def parse_input(user_input):
 
 def main():
     book = AddressBook()
-    contacts = {}
     print("Welcome to the assistant bot!")
 
     while True:
@@ -103,16 +254,25 @@ def main():
             print("How can I help you?")
             
         elif command == "add":
-            print(add_contact(args, contacts))
+            print(add_contact(args, book))
             
         elif command == "change":
-            print(change_contact(args, contacts))
+            print(change_contact(args, book))
             
         elif command == "phone":
-            print(show_phone(args, contacts))
-            
+            print(show_phone(args, book))
+        
         elif command == "all":
-            print(show_all(contacts))
+            print(show_all(book))
+            
+        elif command == "add-birthday":
+            pass
+
+        elif command == "show-birthday":
+            pass
+
+        elif command == "birthdays":
+            pass
             
         elif command is None:
             continue
@@ -122,3 +282,8 @@ def main():
 
 if __name__ == "__main__":
     main()
+
+
+#--------------------------------------------------- BOT ENDS --------------------------------------------------------------------------
+#--------------------------------------------------- BOT ENDS --------------------------------------------------------------------------
+#--------------------------------------------------- BOT ENDS --------------------------------------------------------------------------
