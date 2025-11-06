@@ -3,7 +3,7 @@ from datetime import datetime, timedelta, date
 
 class Field:
     def __init__(self,value):
-        self.__value = value.strip() #removing spaces
+        self.__value = value.strip()
 
     @property
     def value(self):
@@ -44,6 +44,9 @@ class Record:
 
     def add_birthday(self, birhday_string):
         self.birthday = Birthday(birhday_string)
+
+    def show_birthday(self):
+        return self.birthday
 
     def add_phone(self,phone_number):
         phone_num_act = Phone(phone_number)
@@ -89,68 +92,102 @@ class AddressBook(UserDict):
                 del self.data[name]
             else:
                 raise KeyError(f"Contact '{name}' not found in the address book.")
+        
+        def get_upcoming_birthdays(self):
+            today = date.today()
+            upcoming_birthdays = []
+            try:
+                for name, record in self.data.items():
+                    if record.birthday is not None: # if not populated
+                        # Replace year with the current year
+                        birthday_this_year = record.birthday.value.replace(year=today.year)
+
+                        # If birthday already passed this year, use next year
+                        if birthday_this_year < today:
+                            birthday_this_year = birthday_this_year.replace(year=today.year + 1)
+
+                        # If birthday is on weekend, move to next Monday
+                        if birthday_this_year.weekday() == 5:  # Saturday
+                            birthday_this_year += timedelta(days=2)
+                        elif birthday_this_year.weekday() == 6:  # Sunday
+                            birthday_this_year += timedelta(days=1)
+                        
+                        # Check if the (possibly shifted) date is within the next 7 days
+                        if 0 <= (birthday_this_year - today).days <= 7:
+                            upcoming_birthdays.append({
+                                "name": name,
+                                "original_birthday": record.birthday.value.strftime("%d.%m.%Y"),
+                                "congratulation_date": birthday_this_year.strftime("%d.%m.%Y")
+                            })
+                    
+                if len(upcoming_birthdays) == 0:
+                    print('There is no one to congratulate in next 7 days')
+                else:
+                    sorted_upcoming_birthdays = sorted(upcoming_birthdays, key=lambda x: x['congratulation_date'])
+                    print("Congratulations list for this week:\n",sorted_upcoming_birthdays)
+                    return upcoming_birthdays   
+            except ValueError:
+                raise ValueError(f"Wrong incoming data, please check your adressbook")
 
 
 
 
-# # Checking time ----------------------------------------------------------------------------------------------------------
-# john_record = Record("John")
-# john_record.add_phone("1234567890")
-# john_record.add_phone("5555555555")
+# Checking time ----------------------------------------------------------------------------------------------------------
+john_record = Record("John")
+john_record.add_phone("1234567890")
+john_record.add_phone("5555555555")
 
-# jane= Record("Jane")
-# jane.add_phone("7777777777")
-# jane.add_phone("1234567800")
+jane= Record("Jane")
+jane.add_phone("7777777777")
+jane.add_phone("1234567800")
 
-# book = AddressBook()
-# book.add_record(john_record)
-# book.add_record(jane)
+book = AddressBook()
+book.add_record(john_record)
+book.add_record(jane)
 
-# for name, record in book.data.items():
-#     print(record)
+for name, record in book.data.items():
+    print(record)
 
-# john_for_edit = book.find("John")
-# print(john_for_edit)
+john_for_edit = book.find("John")
+print(john_for_edit)
 
-# print('------------------------------------------------------------------')
+print('------------------------------------------------------------------')
 
-# print(john_record.find_phone("5555555555"))
+print(john_record.find_phone("5555555555"))
+john_record.edit_phone("5555555555", "0000000000")
 # john_record.edit_phone("5555555555", "0000000000")
-# # john_record.edit_phone("5555555555", "0000000000")
-# print(john_for_edit)
-# print(john_record)
+print(john_for_edit)
+print(john_record)
 
-# print('------------------------------------------------------------------')
+print('------------------------------------------------------------------')
 
+john_record.remove_phone("0000000000");
 # john_record.remove_phone("0000000000");
-# # john_record.remove_phone("0000000000");
-# print(john_record)
+print(john_record)
 
-# print('------------------------------------------------------------------')
+print('------------------------------------------------------------------')
 
-# for name, record in book.data.items():
-#     print(record)
+for name, record in book.data.items():
+    print(record)
 
-# # book.delete('Kevin')
-# book.delete('Jane')
+# book.delete('Kevin')
+book.delete('Jane')
 
-# for name, record in book.data.items():
-#     print(record)
-
+for name, record in book.data.items():
+    print(record)
 
 
 
-
-
-# my_birthday = Birthday('14.10.1991');
-# print(my_birthday.__str__())
-# wrong_birthday= Birthday('28.02.1991')
-# print(wrong_birthday.__str__())
-
-john_record = Record("John Bay")
+print('------------------------------------------------------------------')
+kevin= Record("Kevin Malone")
+jane= Record("Jane Konnor")
+book.add_record(jane)
 john_record.add_phone("1234567890");
-john_record.add_phone("5656567788");
-john_record.add_birthday('14.10.1991')
-print(john_record.__str__())
-john_record.add_birthday('1.1.2002')
-print(john_record.__str__())
+jane.add_phone("5656567788");
+john_record.add_birthday('8.11.1991')
+# jane.add_birthday('7.11.2000')
+kevin.add_birthday('6.11.2002')
+book.add_record(kevin)
+for name, record in book.data.items():
+    print(record)
+book.get_upcoming_birthdays()
