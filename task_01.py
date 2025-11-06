@@ -1,8 +1,9 @@
 from collections import UserDict
+from datetime import datetime, timedelta, date
 
 class Field:
     def __init__(self,value):
-        self.__value = value
+        self.__value = value.strip() #removing spaces
 
     @property
     def value(self):
@@ -21,9 +22,10 @@ class Name(Field):
 class Birthday(Field):
     def __init__(self, value):
         try:
-            pass
+            formatted_string = '%d.%m.%Y'
+            self.value = datetime.strptime(value,formatted_string).date()
         except ValueError:
-            raise ValueError("Invalid date format. Use DD.MM.YYYY")
+            raise ValueError("Invalid date format. Use DD.MM.YYYY format for real calendar dates")
 
 class Phone(Field):
    def __init__(self,value):
@@ -31,7 +33,6 @@ class Phone(Field):
         if isinstance(value, str) and value.isdigit() and len(value) == 10:
             self.value = value
         else:
-            print("Phone number must be a 10-digit string")
             raise ValueError("Phone number must be a 10-digit string")
 
 
@@ -40,6 +41,9 @@ class Record:
         self.name = Name(name)
         self.phones = []
         self.birthday = None
+
+    def add_birthday(self, birhday_string):
+        self.birthday = Birthday(birhday_string)
 
     def add_phone(self,phone_number):
         phone_num_act = Phone(phone_number)
@@ -67,7 +71,7 @@ class Record:
 
 
     def __str__(self):
-        return f"Contact name: {self.name.value}, phones: {'; '.join(p.value for p in self.phones)}"
+        return f"Contact name: {self.name.value}, phones: {'; '.join(p.value for p in self.phones)}, bithday: {self.birthday}"
     
 
 class AddressBook(UserDict):
@@ -132,3 +136,21 @@ class AddressBook(UserDict):
 
 # for name, record in book.data.items():
 #     print(record)
+
+
+
+
+
+
+# my_birthday = Birthday('14.10.1991');
+# print(my_birthday.__str__())
+# wrong_birthday= Birthday('28.02.1991')
+# print(wrong_birthday.__str__())
+
+john_record = Record("John Bay")
+john_record.add_phone("1234567890");
+john_record.add_phone("5656567788");
+john_record.add_birthday('14.10.1991')
+print(john_record.__str__())
+john_record.add_birthday('1.1.2002')
+print(john_record.__str__())
