@@ -208,7 +208,7 @@ def show_phone(args, book:AddressBook):
         else:
             return f"{name.capitalize()} doesn't have any phones yet"
     else:
-        return "There is no such Contact in your book"
+        return f"There is no {name.capitalize()} in your book, please add it first"
 
 def show_all(book:AddressBook):
     """
@@ -234,6 +234,21 @@ def add_birthday(args, book:AddressBook):
     record.add_birthday(bithday.value.strftime("%d.%m.%Y"))
     return f"Birthday for {record.name} was successfully updated"
 
+@input_error
+def show_birthday(args, book:AddressBook):
+    """
+    Showing birthday if existing Contact exists.
+    Show specific message if birthday is not set.
+    """
+    name, *_ = args
+    record:Record = book.find(name.capitalize())
+    if record is not None:
+        if record.birthday is not None:
+            return f"The birthday date of {record.name.value.capitalize()} is {record.birthday.value.strftime("%d.%m.%Y")}"
+        else:
+            return f"There is no set birthday date for {name.capitalize()}"
+    else:
+        return f"There is no {name.capitalize()} in your book, please add it first"
 
 def parse_input(user_input):
     """
@@ -282,7 +297,7 @@ def main():
             print(add_birthday(args,book))
 
         elif command == "show-birthday":
-            pass
+            print(show_birthday(args,book))
 
         elif command == "birthdays":
             pass
