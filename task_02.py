@@ -124,11 +124,11 @@ class AddressBook(UserDict):
                             })
                     
                 if len(upcoming_birthdays) == 0:
-                    print('There is no one to congratulate in next 7 days')
+                    return 'There is no one to congratulate in next 7 days'
                 else:
                     sorted_upcoming_birthdays = sorted(upcoming_birthdays, key=lambda x: x['congratulation_date'])
-                    print("Congratulations list for this week:\n",sorted_upcoming_birthdays)
-                    return upcoming_birthdays   
+                    return sorted_upcoming_birthdays  
+                    # return f"Congratulations list for next seven days:\n {sorted_upcoming_birthdays}"  
             except ValueError:
                 raise ValueError(f"Wrong incoming data, please check your adressbook")
 
@@ -163,10 +163,10 @@ def add_contact(args, book:AddressBook):
     All names are stored from capital
     """
     name, phone, *_ = args
-    record = book.find(name.capitalize())
+    record = book.find(name.title())
     message = "Contact updated"
     if record is None:
-        record = Record(name.capitalize())
+        record = Record(name.title())
         book.add_record(record)
         message = "Contact added"
     if phone:
@@ -180,7 +180,7 @@ def change_contact(args, book:AddressBook):
     requires name and phone number.
     """
     name, old_phone, new_phone, *_ = args
-    record:Record = book.find(name.capitalize())
+    record:Record = book.find(name.title())
     
     if record is not None:
         if new_phone.isdigit() and len(new_phone) == 10:
@@ -198,17 +198,17 @@ def show_phone(args, book:AddressBook):
     requires name, that matches with available in contacts.
     """
     name = args[0]
-    record:Record = book.find(name.capitalize())
+    record:Record = book.find(name.title())
     if record is not None:
         if len(record.phones) > 0:
             phones = []
             for phone_recording in record.phones:
                 phones.append(phone_recording.value)
-            return phones
+            return f"Available phone(s) for {record.name.value}:\n {phones}"
         else:
-            return f"{name.capitalize()} doesn't have any phones yet"
+            return f"{name.title()} doesn't have any phones yet"
     else:
-        return f"There is no {name.capitalize()} in your book, please add it first"
+        return f"There is no {name.title()} in your book, please add it first"
 
 def show_all(book:AddressBook):
     """
@@ -229,7 +229,7 @@ def add_birthday(args, book:AddressBook):
     Adding birthday to existing contact
     """
     name, birthday_date_string, *_ = args
-    record:Record = book.find(name.capitalize())
+    record:Record = book.find(name.title())
     bithday = Birthday(birthday_date_string)
     record.add_birthday(bithday.value.strftime("%d.%m.%Y"))
     return f"Birthday for {record.name} was successfully updated"
@@ -241,14 +241,24 @@ def show_birthday(args, book:AddressBook):
     Show specific message if birthday is not set.
     """
     name, *_ = args
-    record:Record = book.find(name.capitalize())
+    record:Record = book.find(name.title())
     if record is not None:
         if record.birthday is not None:
-            return f"The birthday date of {record.name.value.capitalize()} is {record.birthday.value.strftime("%d.%m.%Y")}"
+            return f"The birthday date of {record.name.value.title()} is {record.birthday.value.strftime("%d.%m.%Y")}"
         else:
-            return f"There is no set birthday date for {name.capitalize()}"
+            return f"There is no set birthday date for {name.title()}"
     else:
-        return f"There is no {name.capitalize()} in your book, please add it first"
+        return f"There is no {name.title()} in your book, please add it first"
+    
+def birthdays(book:AddressBook):
+    """
+    Shows congratulation list for the contacts in the book that needs to be congratulated.
+    Shows congratulation date as well.
+    """
+    if not book:
+        return "No contacts found in your book"
+    else:
+        return book.get_upcoming_birthdays()
 
 def parse_input(user_input):
     """
@@ -300,7 +310,13 @@ def main():
             print(show_birthday(args,book))
 
         elif command == "birthdays":
-            pass
+            result = birthdays(book)
+            if isinstance(result, list):
+                print("Congratulations list for next seven days:")
+                for contact in result:
+                    print(contact)
+            else:
+                print(result)
             
         elif command is None:
             continue
