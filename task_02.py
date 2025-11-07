@@ -75,8 +75,10 @@ class Record:
 
 
     def __str__(self):
-        return f"Contact name: {self.name.value}, phones: {'; '.join(p.value for p in self.phones)}, bithday: {self.birthday}"
-    
+        if self.birthday is not None:
+            return f"Contact name: {self.name.value}, phones: {'; '.join(p.value for p in self.phones)}, bithday: {self.birthday.value.strftime("%d.%m.%Y")}"
+        else:
+            return f"Contact name: {self.name.value}, phones: {'; '.join(p.value for p in self.phones)}, bithday: {self.birthday}"
 
 class AddressBook(UserDict):
         def add_record(self, record):
@@ -142,8 +144,7 @@ def input_error(func):
         try:
             return func(*args, **kwargs)
         except ValueError:
-            # Case when there is less than 2 args for 'add' or 'change'
-            return "Give me name and phone with 10 digits, please."
+            return "Wrong parameters are provided, please try again with valid data"
         except KeyError:
             # Case when there is no given name available for 'phone' or 'change'
             return "Contact not found."
@@ -222,6 +223,18 @@ def show_all(book:AddressBook):
     
     return "\n".join(output_lines)
 
+@input_error
+def add_birthday(args, book:AddressBook):
+    """
+    Adding birthday to existing contact
+    """
+    name, birthday_date_string, *_ = args
+    record:Record = book.find(name.capitalize())
+    bithday = Birthday(birthday_date_string)
+    record.add_birthday(bithday.value.strftime("%d.%m.%Y"))
+    return f"Birthday for {record.name} was successfully updated"
+
+
 def parse_input(user_input):
     """
      Divides input to commands and arguments.
@@ -266,7 +279,7 @@ def main():
             print(show_all(book))
             
         elif command == "add-birthday":
-            pass
+            print(add_birthday(args,book))
 
         elif command == "show-birthday":
             pass
